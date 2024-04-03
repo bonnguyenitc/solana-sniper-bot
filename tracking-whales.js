@@ -57,8 +57,8 @@ var js_1 = require("@metaplex-foundation/js");
 var web3_js_1 = require("@solana/web3.js");
 var RPC_ENDPOINT = 'https://api.mainnet-beta.solana.com';
 var RPC_WEBSOCKET_ENDPOINT = 'wss://api.mainnet-beta.solana.com';
-var bot = new node_telegram_bot_api_1.default('7046876390:AAEl_46sTUwninrNg-tj56ojFj52omDYfdw', { polling: true });
-// const bot = new TelegramBot('6496482594:AAF0DiqmkuewnnYKFMsxLEZZJPi1Fs9Mous', { polling: true });
+// const bot = new TelegramBot('7046876390:AAEl_46sTUwninrNg-tj56ojFj52omDYfdw', { polling: true });
+var bot = new node_telegram_bot_api_1.default('6496482594:AAF0DiqmkuewnnYKFMsxLEZZJPi1Fs9Mous', { polling: true });
 var solanaConnection = new web3_js_1.Connection(RPC_ENDPOINT, {
     wsEndpoint: RPC_WEBSOCKET_ENDPOINT,
 });
@@ -72,7 +72,7 @@ var listMintExclude = [
 function trackingAlpha(wallet) {
     var _this = this;
     var id = solanaConnection.onProgramAccountChange(spl_token_1.TOKEN_PROGRAM_ID, function (updatedAccountInfo) { return __awaiter(_this, void 0, void 0, function () {
-        var accountData, token, amount, metadata, error_1, error_2;
+        var accountData, token, amount, metadata, error_1;
         var _a, _b, _c;
         return __generator(this, function (_d) {
             switch (_d.label) {
@@ -86,9 +86,9 @@ function trackingAlpha(wallet) {
                     return [4 /*yield*/, checkMetaplex(new web3_js_1.PublicKey(token), solanaConnection)];
                 case 1:
                     metadata = _d.sent();
-                    if (!metadata) return [3 /*break*/, 6];
+                    if (!metadata) return [3 /*break*/, 5];
                     amount = amount / Math.pow(10, (_a = metadata.decimals) !== null && _a !== void 0 ? _a : 0);
-                    if (amount <= 100) {
+                    if (amount <= 5000) {
                         return [2 /*return*/];
                     }
                     if (sent.has("".concat(token, "-").concat(wallet.toString()))) {
@@ -99,7 +99,7 @@ function trackingAlpha(wallet) {
                     _d.label = 2;
                 case 2:
                     _d.trys.push([2, 4, , 5]);
-                    return [4 /*yield*/, bot.sendMessage('@bngok', "\uD83D\uDCA1Alpha wallet: <code>".concat(wallet.toString(), "</code>\n<a href=\"https://solscan.io/account/").concat(wallet.toString(), "#splTransfers\">Check</a>\n").concat(metadata.name, " (").concat(metadata.symbol, ")\n\uD83E\uDE85 CA: <code>").concat(token, "</code>\n\uD83D\uDC64 Renounced: ").concat(metadata.renounceable ? '✅' : '❌', "\n\uD83D\uDCD6 Description: ").concat(metadata.description, " ").concat((_c = Object.values((_b = metadata.extensions) !== null && _b !== void 0 ? _b : {})) === null || _c === void 0 ? void 0 : _c.join(', '), "\n\uD83D\uDCC8 <a href=\"https://solscan.io/token/").concat(token, "\">SolScan</a>\nBought: <code>").concat(amount, "</code> ").concat(metadata.symbol), {
+                    return [4 /*yield*/, bot.sendMessage('@bngok', "\uD83D\uDCA1Alpha wallet: <code>".concat(wallet.toString(), "</code>\n<a href=\"https://solscan.io/account/").concat(wallet.toString(), "#splTransfers\">Check</a>\n").concat(metadata.name, " (").concat(metadata.symbol, ")\n\uD83E\uDE85 CA: <code>").concat(token, "</code>\n\uD83D\uDC64 Renounced: ").concat(metadata.renounceable ? '✅' : '❌', "\n\uD83D\uDCD6 Description: ").concat(metadata.description, " ").concat((_c = Object.values((_b = metadata.extensions) !== null && _b !== void 0 ? _b : {})) === null || _c === void 0 ? void 0 : _c.join(', '), "\n\uD83D\uDCC8 <a href=\"https://solscan.io/token/").concat(token, "\">SolScan</a>\nBought: <code>").concat(formatter.format(amount), "</code> ").concat(metadata.symbol), {
                             parse_mode: 'HTML',
                             disable_web_page_preview: true,
                         })];
@@ -110,20 +110,7 @@ function trackingAlpha(wallet) {
                     error_1 = _d.sent();
                     console.log("Can't send message", error_1);
                     return [3 /*break*/, 5];
-                case 5: return [3 /*break*/, 9];
-                case 6:
-                    _d.trys.push([6, 8, , 9]);
-                    return [4 /*yield*/, bot.sendMessage('@bngok', "Alpha detected: ".concat(wallet.toString(), "\n  Buy Token CA: <code>").concat(token, "</code>\n  Bought: <code>").concat(amount, "</code>"), {
-                            parse_mode: 'HTML',
-                        })];
-                case 7:
-                    _d.sent();
-                    return [3 /*break*/, 9];
-                case 8:
-                    error_2 = _d.sent();
-                    console.log("Can't send message", error_2);
-                    return [3 /*break*/, 9];
-                case 9: return [2 /*return*/];
+                case 5: return [2 /*return*/];
             }
         });
     }); }, 'finalized', [
@@ -139,7 +126,7 @@ function trackingAlpha(wallet) {
     ]);
     console.info("".concat(id, " ===> Listening for wallet changes: ").concat(wallet.toString()));
 }
-whales_json_1.default.list.slice(1, 50).forEach(function (wallet) {
+whales_json_1.default.list.slice(50).forEach(function (wallet) {
     trackingAlpha(new web3_js_1.PublicKey(wallet));
 });
 function checkBalance() {
@@ -161,7 +148,7 @@ function checkBalance() {
                 case 3:
                     balanceOfOwner = _b.sent();
                     balance = balanceOfOwner / 1000000000;
-                    if (balance > 5) {
+                    if (balance > 1) {
                         list.push(addr);
                     }
                     _b.label = 4;
@@ -195,3 +182,7 @@ function checkMetaplex(mintAddress, connection) {
         });
     });
 }
+var formatter = new Intl.NumberFormat('en-US', {
+    style: 'currency',
+    currency: 'USD',
+});

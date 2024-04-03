@@ -7,8 +7,8 @@ import { Connection, PublicKey } from '@solana/web3.js';
 const RPC_ENDPOINT = 'https://api.mainnet-beta.solana.com';
 const RPC_WEBSOCKET_ENDPOINT = 'wss://api.mainnet-beta.solana.com';
 
-const bot = new TelegramBot('7046876390:AAEl_46sTUwninrNg-tj56ojFj52omDYfdw', { polling: true });
-// const bot = new TelegramBot('6496482594:AAF0DiqmkuewnnYKFMsxLEZZJPi1Fs9Mous', { polling: true });
+// const bot = new TelegramBot('7046876390:AAEl_46sTUwninrNg-tj56ojFj52omDYfdw', { polling: true });
+const bot = new TelegramBot('6496482594:AAF0DiqmkuewnnYKFMsxLEZZJPi1Fs9Mous', { polling: true });
 
 const solanaConnection = new Connection(RPC_ENDPOINT, {
   wsEndpoint: RPC_WEBSOCKET_ENDPOINT,
@@ -40,7 +40,7 @@ function trackingAlpha(wallet: PublicKey) {
 
       if (metadata) {
         amount = amount / Math.pow(10, metadata.decimals ?? 0);
-        if (amount <= 100) {
+        if (amount <= 5000) {
           return;
         }
         if (sent.has(`${token}-${wallet.toString()}`)) {
@@ -59,24 +59,10 @@ ${metadata.name} (${metadata.symbol})
 👤 Renounced: ${metadata.renounceable ? '✅' : '❌'}
 📖 Description: ${metadata.description} ${Object.values(metadata.extensions ?? {})?.join(', ')}
 📈 <a href="https://solscan.io/token/${token}">SolScan</a>
-Bought: <code>${amount}</code> ${metadata.symbol}`,
+Bought: <code>${formatter.format(amount)}</code> ${metadata.symbol}`,
             {
               parse_mode: 'HTML',
               disable_web_page_preview: true,
-            },
-          );
-        } catch (error) {
-          console.log("Can't send message", error);
-        }
-      } else {
-        try {
-          await bot.sendMessage(
-            '@bngok',
-            `Alpha detected: ${wallet.toString()}
-  Buy Token CA: <code>${token}</code>
-  Bought: <code>${amount}</code>`,
-            {
-              parse_mode: 'HTML',
             },
           );
         } catch (error) {
@@ -101,7 +87,7 @@ Bought: <code>${amount}</code> ${metadata.symbol}`,
   console.info(`${id} ===> Listening for wallet changes: ${wallet.toString()}`);
 }
 
-wallets.list.slice(1, 50).forEach((wallet) => {
+wallets.list.slice(50).forEach((wallet) => {
   trackingAlpha(new PublicKey(wallet));
 });
 
@@ -111,7 +97,7 @@ async function checkBalance() {
     await new Promise((resolve) => setTimeout(resolve, 2000));
     const balanceOfOwner = await solanaConnection.getBalance(new PublicKey(addr));
     const balance = balanceOfOwner / 1000000000;
-    if (balance > 5) {
+    if (balance > 1) {
       list.push(addr);
     }
   }
@@ -137,3 +123,8 @@ async function checkMetaplex(mintAddress: PublicKey, connection: Connection) {
   }
   return null;
 }
+
+const formatter = new Intl.NumberFormat('en-US', {
+  style: 'currency',
+  currency: 'USD',
+});

@@ -12,7 +12,15 @@ const RAYDIUM_LIQUIDITY_PROGRAM_ID_V4 = new PublicKey('675kPX9MHTjS2zt1qfr1NYHuz
 
 const bot = new TelegramBot('6677381747:AAGVWUJfgRGWmXUnYfS4iydwRDBYIMOs7PU', { polling: true });
 
-const NAME = 'cat';
+function checkAllCharIsLowerCase(str: string) {
+  str = str.replace(' ', '');
+  for (let i = 0; i < str.length; i++) {
+    if (str[i] !== str[i].toLowerCase()) {
+      return false;
+    }
+  }
+  return true;
+}
 
 const RPC_ENDPOINT =
   'https://chaotic-delicate-gadget.solana-mainnet.quiknode.pro/c61ff77c69d3255f7be58feb3fcea3e4611c2375/';
@@ -46,29 +54,41 @@ solanaConnection.onProgramAccountChange(
         return;
       }
 
+      const lpMint = poolState.lpMint;
+      const lpReserveStr = poolState.lpReserve.toString();
+
+      const accInfo: any = await solanaConnection.getParsedAccountInfo(new PublicKey(lpMint));
+      const mintInfo = accInfo?.value?.data?.parsed?.info;
+
+      const lpReserve = Number(lpReserveStr) / Math.pow(10, mintInfo?.decimals);
+      const actualSupply = mintInfo?.supply / Math.pow(10, mintInfo?.decimals);
+
+      //Calculate burn percentage
+      // const maxLpSupply = Math.max(actualSupply, lpReserve - 1);
+      const burnAmt = lpReserve - actualSupply;
+      const burnPct = (burnAmt / lpReserve) * 100;
+
       // delay
       await new Promise((resolve) => setTimeout(resolve, 2000));
 
       const metadata: any = await checkMetaplex(poolState.baseMint, solanaConnection);
       if (metadata) {
-        if (metadata.renounceable && metadata.renounceableMint) {
-          const name = metadata.name?.toLocaleLowerCase();
-          const symbol = metadata.symbol?.toLocaleLowerCase();
-          if (name?.includes(NAME) || symbol?.includes(NAME)) {
-            // notify
-            await bot.sendMessage(
-              '@bngok',
-              `<strong>NEW LP ADDED</strong>
-${metadata.name} (${metadata.symbol})
+        if (metadata.renounceable) {
+          // notify
+          await bot.sendMessage(
+            '@bngok',
+            `<strong>🚨🚨🚨NEW LIQUID ADDED🚨🚨🚨</strong>
+${metadata.name} (${metadata.symbol}) (${burnPct ?? 0}% 🔥)
 🪅 CA: <code>${poolState.baseMint.toString()}</code>
-📖 Description: ${metadata.description} ${Object.values(metadata.extensions ?? {})?.join(', ')}
-📈 <a href="https://dexscreener.com/solana/${id}">DexScreen</a>|📈 <a href="https://solscan.io/token/${poolState.baseMint.toString()}">Token</a>|📈 <a href="https://solscan.io/account/${poolState.owner.toString()}#splTransfers">Dev</a>`,
-              {
-                parse_mode: 'HTML',
-                disable_web_page_preview: true,
-              },
-            );
-          }
+👤 Renounced: ✅
+💰 Supply: ${formatter.format(metadata.supply)?.replace('$', '')} ${metadata.symbol}
+📖 Description: ${metadata.description} ${Object.values(metadata.extensions ?? {})?.join('\n')}
+📈 <a href="https://dexscreener.com/solana/${id}">DS</a>|📈 <a href="https://solscan.io/token/${poolState.baseMint.toString()}">Token</a>`,
+            {
+              parse_mode: 'HTML',
+              disable_web_page_preview: true,
+            },
+          );
         }
       }
     }
@@ -104,15 +124,21 @@ async function checkMetaplex(mintAddress: PublicKey, connection: Connection) {
 
   if (metadataAccountInfo) {
     const token = await metaplex.nfts().findByMint({ mintAddress: mintAddress });
+    console.log(token.mint.supply.basisPoints.toString(), token.mint.address);
     return {
       ...token.json,
       decimals: token.mint.decimals,
-      renounceable: token.mint.freezeAuthorityAddress === null,
-      renounceableMint: token.mint.mintAuthorityAddress === null,
+      renounceable: token.mint.freezeAuthorityAddress === null && token.mint.mintAuthorityAddress === null,
       name: token.name,
       symbol: token.symbol,
       isMutable: token.isMutable,
+      supply: Number(token.mint.supply.basisPoints.toString()) / Math.pow(10, token.mint.decimals),
     };
   }
   return null;
 }
+
+const formatter = new Intl.NumberFormat('en-US', {
+  style: 'currency',
+  currency: 'USD',
+});

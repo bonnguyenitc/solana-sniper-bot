@@ -60,7 +60,15 @@ var MIN_POOL_SIZE = 10;
 var OPENBOOK_PROGRAM_ID = new web3_js_1.PublicKey('srmqPvymJeFKQ4zGQed1GFppgkRHL9kaELCbyksJtPX');
 var RAYDIUM_LIQUIDITY_PROGRAM_ID_V4 = new web3_js_1.PublicKey('675kPX9MHTjS2zt1qfr1NYHuzeLXfQM9H24wFSUt1Mp8');
 var bot = new node_telegram_bot_api_1.default('6677381747:AAGVWUJfgRGWmXUnYfS4iydwRDBYIMOs7PU', { polling: true });
-var NAME = 'cat';
+function checkAllCharIsLowerCase(str) {
+    str = str.replace(' ', '');
+    for (var i = 0; i < str.length; i++) {
+        if (str[i] !== str[i].toLowerCase()) {
+            return false;
+        }
+    }
+    return true;
+}
 var RPC_ENDPOINT = 'https://chaotic-delicate-gadget.solana-mainnet.quiknode.pro/c61ff77c69d3255f7be58feb3fcea3e4611c2375/';
 var RPC_WEBSOCKET_ENDPOINT = 'wss://chaotic-delicate-gadget.solana-mainnet.quiknode.pro/c61ff77c69d3255f7be58feb3fcea3e4611c2375/';
 var quoteToken = raydium_sdk_1.Token.WSOL;
@@ -72,44 +80,51 @@ var solanaConnection = new web3_js_1.Connection(RPC_ENDPOINT, {
 var metaplex = js_1.Metaplex.make(solanaConnection);
 var runTimestamp = Math.floor(new Date().getTime() / 1000);
 solanaConnection.onProgramAccountChange(RAYDIUM_LIQUIDITY_PROGRAM_ID_V4, function (updatedAccountInfo) { return __awaiter(void 0, void 0, void 0, function () {
-    var poolState, poolOpenTime, id, existing, poolSize, metadata, name_1, symbol;
-    var _a, _b, _c, _d;
-    return __generator(this, function (_e) {
-        switch (_e.label) {
+    var poolState, poolOpenTime, id, existing, poolSize, lpMint, lpReserveStr, accInfo, mintInfo, lpReserve, actualSupply, burnAmt, burnPct, metadata;
+    var _a, _b, _c, _d, _e, _f;
+    return __generator(this, function (_g) {
+        switch (_g.label) {
             case 0:
                 poolState = raydium_sdk_1.LIQUIDITY_STATE_LAYOUT_V4.decode(updatedAccountInfo.accountInfo.data);
                 poolOpenTime = parseInt(poolState.poolOpenTime.toString());
                 id = updatedAccountInfo.accountId.toString();
                 existing = lpExist.has(id);
-                if (!(poolOpenTime >= runTimestamp && !existing)) return [3 /*break*/, 4];
+                if (!(poolOpenTime >= runTimestamp && !existing)) return [3 /*break*/, 5];
                 lpExist.add(id);
                 poolSize = new raydium_sdk_1.TokenAmount(quoteToken, poolState.swapQuoteInAmount, true);
                 if (poolSize.lt(quoteMinPoolSizeAmount)) {
                     return [2 /*return*/];
                 }
+                lpMint = poolState.lpMint;
+                lpReserveStr = poolState.lpReserve.toString();
+                return [4 /*yield*/, solanaConnection.getParsedAccountInfo(new web3_js_1.PublicKey(lpMint))];
+            case 1:
+                accInfo = _g.sent();
+                mintInfo = (_c = (_b = (_a = accInfo === null || accInfo === void 0 ? void 0 : accInfo.value) === null || _a === void 0 ? void 0 : _a.data) === null || _b === void 0 ? void 0 : _b.parsed) === null || _c === void 0 ? void 0 : _c.info;
+                lpReserve = Number(lpReserveStr) / Math.pow(10, mintInfo === null || mintInfo === void 0 ? void 0 : mintInfo.decimals);
+                actualSupply = (mintInfo === null || mintInfo === void 0 ? void 0 : mintInfo.supply) / Math.pow(10, mintInfo === null || mintInfo === void 0 ? void 0 : mintInfo.decimals);
+                burnAmt = lpReserve - actualSupply;
+                burnPct = (burnAmt / lpReserve) * 100;
                 // delay
                 return [4 /*yield*/, new Promise(function (resolve) { return setTimeout(resolve, 2000); })];
-            case 1:
-                // delay
-                _e.sent();
-                return [4 /*yield*/, checkMetaplex(poolState.baseMint, solanaConnection)];
             case 2:
-                metadata = _e.sent();
-                if (!metadata) return [3 /*break*/, 4];
-                if (!(metadata.renounceable && metadata.renounceableMint)) return [3 /*break*/, 4];
-                name_1 = (_a = metadata.name) === null || _a === void 0 ? void 0 : _a.toLocaleLowerCase();
-                symbol = (_b = metadata.symbol) === null || _b === void 0 ? void 0 : _b.toLocaleLowerCase();
-                if (!((name_1 === null || name_1 === void 0 ? void 0 : name_1.includes(NAME)) || (symbol === null || symbol === void 0 ? void 0 : symbol.includes(NAME)))) return [3 /*break*/, 4];
+                // delay
+                _g.sent();
+                return [4 /*yield*/, checkMetaplex(poolState.baseMint, solanaConnection)];
+            case 3:
+                metadata = _g.sent();
+                if (!metadata) return [3 /*break*/, 5];
+                if (!metadata.renounceable) return [3 /*break*/, 5];
                 // notify
-                return [4 /*yield*/, bot.sendMessage('@bngok', "<strong>NEW LP ADDED</strong>\n".concat(metadata.name, " (").concat(metadata.symbol, ")\n\uD83E\uDE85 CA: <code>").concat(poolState.baseMint.toString(), "</code>\n\uD83D\uDCD6 Description: ").concat(metadata.description, " ").concat((_d = Object.values((_c = metadata.extensions) !== null && _c !== void 0 ? _c : {})) === null || _d === void 0 ? void 0 : _d.join(', '), "\n\uD83D\uDCC8 <a href=\"https://dexscreener.com/solana/").concat(id, "\">DexScreen</a>|\uD83D\uDCC8 <a href=\"https://solscan.io/token/").concat(poolState.baseMint.toString(), "\">Token</a>|\uD83D\uDCC8 <a href=\"https://solscan.io/account/").concat(poolState.owner.toString(), "#splTransfers\">Dev</a>"), {
+                return [4 /*yield*/, bot.sendMessage('@bngok', "<strong>\uD83D\uDEA8\uD83D\uDEA8\uD83D\uDEA8NEW LIQUID ADDED\uD83D\uDEA8\uD83D\uDEA8\uD83D\uDEA8</strong>\n".concat(metadata.name, " (").concat(metadata.symbol, ") (").concat(burnPct !== null && burnPct !== void 0 ? burnPct : 0, "% \uD83D\uDD25)\n\uD83E\uDE85 CA: <code>").concat(poolState.baseMint.toString(), "</code>\n\uD83D\uDC64 Renounced: \u2705\n\uD83D\uDCB0 Supply: ").concat((_d = formatter.format(metadata.supply)) === null || _d === void 0 ? void 0 : _d.replace('$', ''), " ").concat(metadata.symbol, "\n\uD83D\uDCD6 Description: ").concat(metadata.description, " ").concat((_f = Object.values((_e = metadata.extensions) !== null && _e !== void 0 ? _e : {})) === null || _f === void 0 ? void 0 : _f.join('\n'), "\n\uD83D\uDCC8 <a href=\"https://dexscreener.com/solana/").concat(id, "\">DS</a>|\uD83D\uDCC8 <a href=\"https://solscan.io/token/").concat(poolState.baseMint.toString(), "\">Token</a>"), {
                         parse_mode: 'HTML',
                         disable_web_page_preview: true,
                     })];
-            case 3:
+            case 4:
                 // notify
-                _e.sent();
-                _e.label = 4;
-            case 4: return [2 /*return*/];
+                _g.sent();
+                _g.label = 5;
+            case 5: return [2 /*return*/];
         }
     });
 }); }, COMMITMENT_LEVEL, [
@@ -147,9 +162,14 @@ function checkMetaplex(mintAddress, connection) {
                     return [4 /*yield*/, metaplex.nfts().findByMint({ mintAddress: mintAddress })];
                 case 2:
                     token = _a.sent();
-                    return [2 /*return*/, __assign(__assign({}, token.json), { decimals: token.mint.decimals, renounceable: token.mint.freezeAuthorityAddress === null, renounceableMint: token.mint.mintAuthorityAddress === null, name: token.name, symbol: token.symbol, isMutable: token.isMutable })];
+                    console.log(token.mint.supply.basisPoints.toString(), token.mint.address);
+                    return [2 /*return*/, __assign(__assign({}, token.json), { decimals: token.mint.decimals, renounceable: token.mint.freezeAuthorityAddress === null && token.mint.mintAuthorityAddress === null, name: token.name, symbol: token.symbol, isMutable: token.isMutable, supply: Number(token.mint.supply.basisPoints.toString()) / Math.pow(10, token.mint.decimals) })];
                 case 3: return [2 /*return*/, null];
             }
         });
     });
 }
+var formatter = new Intl.NumberFormat('en-US', {
+    style: 'currency',
+    currency: 'USD',
+});
